@@ -4,14 +4,8 @@ from UI import UI
 FILTERS = []
 
 def main():
-    running = True
-    Window = UI()
     Sniffer = sniffer()
-
-    while running:
-        Sniffer.sniffing()
-        if input('Continue running? ').lower() != 'y':
-            running = False
+    Window = UI(Sniffer)
 
 if __name__ == "__main__":
     main()

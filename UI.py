@@ -1,11 +1,19 @@
+from threading import *
+from time import *
 from tkinter import *
 
 class UI:
-    def __init__(self):
+    def __init__(self, Sniffer):
         self.root = None
         self.title = None
         self.filter_entry = None
-        self.packets = None
+        self.packets_box = None
+
+        self.Sniffer = Sniffer
+        self.filters = []
+        self.pause = 0
+
+        self.sniffing_thread = Thread(target=self.Sniffer.sniffing).start()
 
         self.setup_window()
 
@@ -14,8 +22,8 @@ class UI:
         self.root.title('PhantomNet')
         self.root.geometry('750x400')
         self.setup_widgets()
-        self.setup_packets()
 
+        self.root.after(100, self.update_packets)
         self.root.mainloop()
 
     def setup_widgets(self):
@@ -26,16 +34,29 @@ class UI:
         self.filter_entry = Entry(self.root)
         self.filter_entry.pack()
 
-    def setup_packets(self):
+        self.pause_checkbox = Checkbutton(self.root, text='Pause sniffing', variable=self.pause, command=self.on_pause).pack()
         scrollbar = Scrollbar(self.root)
         scrollbar.pack(side=LEFT, fill=Y)
-        packets = Listbox(self.root, yscrollcommand=scrollbar.set)
+        self.packets_box = Listbox(self.root, yscrollcommand=scrollbar.set, height = 50, width = 125)
 
-        for line in range(100):
-            packets.insert(END, 'This is line number' + str(line))
+        self.packets_box.pack(side=LEFT, fill=BOTH)
+        scrollbar.config(command=self.packets_box.yview)
 
-        packets.pack(side=LEFT, fill=BOTH)
-        scrollbar.config(command=packets.yview)
+    def on_pause(self):
+        print((self.pause + 1) % 2)
+        if self.pause == 0:
+            self.pause = 1
+            print('Paused sniffing')
+        else:
+            self.pause = 0
+            self.update_packets()
 
-if __name__ == '__main__':
-    my_ui = ui()
+    def update_packets(self):
+        lines = self.packets_box.size()
+        new_packets = self.Sniffer.get_packets()[lines:]
+
+        for packet in new_packets:
+            self.packets_box.insert(END, f"{packet['id']}  |  {packet['protocol']}  |  {packet['src_ip']}  |  {packet['src_port']}  |  {packet['dst_ip']}  |  {packet['dst_port']}")
+
+        if self.pause == 0:
+            self.root.after(100, self.update_packets)

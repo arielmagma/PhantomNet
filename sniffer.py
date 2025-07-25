@@ -10,8 +10,7 @@ class sniffer:
     def proccess_packet(self, packet):
         protocol, src_ip, dst_ip, src_port, dst_port = self.get_packet_information(packet)
         #print(f'{{\'protocol\': {protocol}, \'src_ip\': {src_ip}, \'src_port\': {src_port}, \'dst_ip\': {dst_ip}, \'dst_port\': {dst_port}}}')
-        self.packets.append({'protocol': protocol, 'src_ip': src_ip, 'src_port': src_port, 'dst_ip': dst_ip, 'dst_port': dst_port})
-        print(self.packets)
+        self.packets.append({'protocol': protocol, 'src_ip': src_ip, 'src_port': src_port, 'dst_ip': dst_ip, 'dst_port': dst_port, 'id': len(self.packets)})
 
     def get_packet_information(self, packet):
         protocol = self.identify_protocol(packet)
@@ -62,3 +61,6 @@ class sniffer:
 
         else:
             return 'Unknown'
+
+    def get_packets(self):
+        return self.packets
