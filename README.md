@@ -13,4 +13,4 @@
 
 - **Python** – core logic and glue between components
 - **Scapy** – backend packet sniffing and network interaction
-- **Tkinter** – frontend user interfac
+- **Tkinter** – frontend user interface
