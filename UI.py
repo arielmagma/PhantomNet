@@ -4,6 +4,7 @@ from tkinter import *
 
 class UI:
     def __init__(self, Sniffer):
+        self.protocols = ['HTTP', 'HTTPS', 'TCP', 'DNS', 'UDP', 'ICMP', 'ARP', 'Raw', 'IP', 'Unknown']
         self.root = None
         self.title = None
         self.filter_entry = None
@@ -13,6 +14,7 @@ class UI:
         self.filters = []
         self.pause = 0
 
+        self.num_of_packets = 0
         self.sniffing_thread = Thread(target=self.Sniffer.sniffing).start()
 
         self.setup_window()
@@ -21,6 +23,7 @@ class UI:
         self.root = Tk()
         self.root.title('PhantomNet')
         self.root.geometry('750x400')
+        self.root.protocol("WM_DELETE_WINDOW", self.on_close)
         self.setup_widgets()
 
         self.root.after(100, self.update_packets)
@@ -32,6 +35,7 @@ class UI:
 
         Label(self.root, text = 'Filters: ').pack()
         self.filter_entry = Entry(self.root)
+        self.filter_entry.bind('<KeyRelease>', self.get_filter)
         self.filter_entry.pack()
 
         self.pause_checkbox = Checkbutton(self.root, text='Pause sniffing', variable=self.pause, command=self.on_pause).pack()
@@ -41,6 +45,15 @@ class UI:
 
         self.packets_box.pack(side=LEFT, fill=BOTH)
         scrollbar.config(command=self.packets_box.yview)
+
+    def on_close(self):
+        self.pause = 1
+        self.Sniffer.pause = 1
+
+        if self.sniffing_thread and self.sniffing_thread.is_alive():
+            self.sniffing_thread.join()
+
+        self.root.destroy()
 
     def on_pause(self):
         if self.pause == 0:
@@ -52,12 +65,47 @@ class UI:
             self.sniffing_thread = Thread(target=self.Sniffer.sniffing).start()
             self.update_packets()
 
+    def get_filter(self, event=None):
+        filters = self.filter_entry.get()
+        filters = filters.split()
+
+        self.filters = []
+        for filter in range(len(filters)):
+            if filters[filter] in self.protocols:
+                self.filters.append(filters[filter])
+                print(self.filters)
+
+        self.filter_change()
+
+    def check_filter(self, packet):
+        if len(self.filters) != 0:
+            if packet['protocol'] in self.filters:
+                return True
+            else:
+                return False
+        else:
+            return True
+
+    def filter_change(self):
+        self.packets_box.delete(0, END)
+
+        for packet in self.Sniffer.get_packets():
+            if self.check_filter(packet):
+                self.packets_box.insert(END, self.packet_string(packet))
+
+        self.num_of_packets = len(self.Sniffer.get_packets())
+
+    def packet_string(self, packet):
+        return f"{packet['id']}  |  {packet['protocol']}  |  {packet['src_ip']}  |  {packet['src_port']}  |  {packet['dst_ip']}  |  {packet['dst_port']}"
+
     def update_packets(self):
-        lines = self.packets_box.size()
-        new_packets = self.Sniffer.get_packets()[lines:]
+        new_packets = self.Sniffer.get_packets()[self.num_of_packets:]
 
         for packet in new_packets:
-            self.packets_box.insert(END, f"{packet['id']}  |  {packet['protocol']}  |  {packet['src_ip']}  |  {packet['src_port']}  |  {packet['dst_ip']}  |  {packet['dst_port']}")
+            if self.check_filter(packet):
+                self.packets_box.insert(END, self.packet_string(packet))
+
+        self.num_of_packets += len(new_packets)
 
         if self.pause == 0:
             self.root.after(100, self.update_packets)
