@@ -3,13 +3,17 @@ from scapy.all import *
 class sniffer:
     def __init__(self):
         self.packets = []
+        self.pause = 0
 
     def sniffing(self):
-        sniff(prn = self.proccess_packet)
+        sniff(prn = self.proccess_packet, stop_filter=self.check_sniffing)
+
+    def check_sniffing(self, packet):
+        return self.pause
 
     def proccess_packet(self, packet):
         protocol, src_ip, dst_ip, src_port, dst_port = self.get_packet_information(packet)
-        #print(f'{{\'protocol\': {protocol}, \'src_ip\': {src_ip}, \'src_port\': {src_port}, \'dst_ip\': {dst_ip}, \'dst_port\': {dst_port}}}')
+        print(f'{{\'protocol\': {protocol}, \'src_ip\': {src_ip}, \'src_port\': {src_port}, \'dst_ip\': {dst_ip}, \'dst_port\': {dst_port}, \'id\': {len(self.packets)}}}')
         self.packets.append({'protocol': protocol, 'src_ip': src_ip, 'src_port': src_port, 'dst_ip': dst_ip, 'dst_port': dst_port, 'id': len(self.packets)})
 
     def get_packet_information(self, packet):

@@ -43,12 +43,13 @@ class UI:
         scrollbar.config(command=self.packets_box.yview)
 
     def on_pause(self):
-        print((self.pause + 1) % 2)
         if self.pause == 0:
             self.pause = 1
-            print('Paused sniffing')
+            self.Sniffer.pause = self.pause
         else:
             self.pause = 0
+            self.Sniffer.pause = self.pause
+            self.sniffing_thread = Thread(target=self.Sniffer.sniffing).start()
             self.update_packets()
 
     def update_packets(self):
