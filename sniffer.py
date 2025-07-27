@@ -14,14 +14,14 @@ class sniffer:
     def proccess_packet(self, packet):
         protocol, src_ip, dst_ip, src_port, dst_port = self.get_packet_information(packet)
         data = self.get_data(packet)
-        #print(f'{{\'protocol\': {protocol}, \'src_ip\': {src_ip}, \'src_port\': {src_port}, \'dst_ip\': {dst_ip}, \'dst_port\': {dst_port}, \'id\': {len(self.packets)}}}')
+
         self.packets.append({'protocol': protocol, 'src_ip': src_ip, 'src_port': src_port, 'dst_ip': dst_ip, 'dst_port': dst_port, 'id': len(self.packets), 'data': data})
 
     def get_data(self, packet):
         if Raw in packet:
             return self.bytes_to_hex(packet[Raw].load)
         try:
-            return bytes(packet.payload)
+            return self.bytes_to_hex(bytes(packet.payload))
         except Exception:
             return None
 
@@ -81,6 +81,9 @@ class sniffer:
 
         elif packet.haslayer(IP):
             return 'IP'
+
+        elif packet.haslayer(IPv6):
+            return 'IPv6'
 
         else:
             return 'Unknown'
