@@ -27,11 +27,12 @@ class sniffer:
 
     def bytes_to_hex(self, data, width=8):
         lines = []
-        for i in range(0, len(data), width):
-            chunk = data[i:i+width]
-            hex_bytes = ' '.join(f'{b:02X}' for b in chunk)
-            ascii_bytes = ''.join(chr(b) if 32 <= b < 127 else '.' for b in chunk)
-            lines.append(f"{hex_bytes:<{width*3}}  {ascii_bytes}")
+        for offset in range(0, len(data), width):
+            chunk = data[offset:offset + width]
+            hex_bytes = ' '.join(f"{b:02X}" for b in chunk)
+            hex_bytes_padded = hex_bytes.ljust(width * 3 - 1)
+            ascii_bytes = ''.join(chr(b) if 32 <= b <= 126 else '.' for b in chunk)
+            lines.append(f"{offset:04X}  {hex_bytes_padded}  {ascii_bytes}")
         return '\n'.join(lines)
 
     def get_packet_information(self, packet):

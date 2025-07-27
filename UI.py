@@ -75,12 +75,20 @@ class UI:
         for filter in range(len(filters)):
             if filters[filter] in self.protocols:
                 self.filters.append(filters[filter])
+            elif filters[filter].startswith('ip_src='):
+                self.filters.append(filters[filter])
+            elif filters[filter].startswith('ip_dst='):
+                self.filters.append(filters[filter])
 
         self.filter_change()
 
     def check_filter(self, packet):
         if len(self.filters) != 0:
             if packet['protocol'] in self.filters:
+                return True
+            elif f'ip_src={packet["src_ip"]}' in self.filters:
+                return True
+            elif f'ip_dst={packet["dst_ip"]}' in self.filters:
                 return True
             else:
                 return False
