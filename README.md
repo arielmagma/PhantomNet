@@ -6,7 +6,7 @@
 
 - Simple and intuitive graphical interface (Tkinter)
 - Easily customizable and extendable
-- Save/Load sniffing seassions
+- Save/Load sniffing sessions
   
 ## Features
 
