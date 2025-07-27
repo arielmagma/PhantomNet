@@ -61,12 +61,20 @@ class sniffer:
                 return 'HTTP'
             elif packet[TCP].dport == 443 or packet[TCP].sport == 443:
                 return 'HTTPS'
+            elif packet[TCP].dport == 25 or packet[TCP].sport == 25:
+                return 'SMTP'
+            elif packet[TCP].dport == 22 or packet[TCP].sport == 22:
+                return 'SSH'
+            elif packet[TCP].dport == 20 or packet[TCP].sport == 20 or packet[TCP].dport == 21 or packet[TCP].sport == 21:
+                return 'FTP'
             else:
                 return 'TCP'
 
         elif packet.haslayer(UDP):
             if packet['UDP'].sport == 53 or packet[UDP].dport == 53:
                 return 'DNS'
+            elif packet[UDP].dport == 67 or packet[UDP].sport == 67 or packet[UDP].dport == 68 or packet[UDP].sport == 68:
+                return 'DHCP'
             else:
                 return 'UDP'
 

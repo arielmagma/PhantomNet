@@ -10,7 +10,7 @@ from tkinter import *
 
 class UI:
     def __init__(self, Sniffer):
-        self.protocols = ['HTTP', 'HTTPS', 'TCP', 'DNS', 'UDP', 'ICMP', 'ARP', 'Raw', 'IP', 'IPv6', 'Unknown']
+        self.protocols = ['HTTP', 'HTTPS', 'TCP', 'DNS', 'UDP', 'ICMP', 'ARP', 'Raw', 'IP', 'IPv6', 'SMTP', 'SSH', 'FTP', 'DHCP', 'Unknown']
         self.root = None
         self.title = None
         self.filter_entry = None
