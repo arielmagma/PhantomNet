@@ -13,8 +13,26 @@ class sniffer:
 
     def proccess_packet(self, packet):
         protocol, src_ip, dst_ip, src_port, dst_port = self.get_packet_information(packet)
+        data = self.get_data(packet)
         #print(f'{{\'protocol\': {protocol}, \'src_ip\': {src_ip}, \'src_port\': {src_port}, \'dst_ip\': {dst_ip}, \'dst_port\': {dst_port}, \'id\': {len(self.packets)}}}')
-        self.packets.append({'protocol': protocol, 'src_ip': src_ip, 'src_port': src_port, 'dst_ip': dst_ip, 'dst_port': dst_port, 'id': len(self.packets)})
+        self.packets.append({'protocol': protocol, 'src_ip': src_ip, 'src_port': src_port, 'dst_ip': dst_ip, 'dst_port': dst_port, 'id': len(self.packets), 'data': data})
+
+    def get_data(self, packet):
+        if Raw in packet:
+            return self.bytes_to_hex(packet[Raw].load)
+        try:
+            return bytes(packet.payload)
+        except Exception:
+            return None
+
+    def bytes_to_hex(self, data, width=8):
+        lines = []
+        for i in range(0, len(data), width):
+            chunk = data[i:i+width]
+            hex_bytes = ' '.join(f'{b:02X}' for b in chunk)
+            ascii_bytes = ''.join(chr(b) if 32 <= b < 127 else '.' for b in chunk)
+            lines.append(f"{hex_bytes:<{width*3}}  {ascii_bytes}")
+        return '\n'.join(lines)
 
     def get_packet_information(self, packet):
         protocol = self.identify_protocol(packet)
@@ -27,10 +45,10 @@ class sniffer:
 
         src_port = None
         dst_port = None
-        if protocol == 'TCP':
+        if packet.haslayer(TCP):
             src_port = packet[TCP].sport
             dst_port = packet[TCP].dport
-        elif protocol == 'UDP':
+        elif packet.haslayer(UDP):
             src_port = packet[UDP].sport
             dst_port = packet[UDP].dport
 

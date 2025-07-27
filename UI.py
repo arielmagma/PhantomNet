@@ -38,11 +38,13 @@ class UI:
         self.filter_entry.bind('<KeyRelease>', self.get_filter)
         self.filter_entry.pack()
 
-        self.pause_checkbox = Checkbutton(self.root, text='Pause sniffing', variable=self.pause, command=self.on_pause).pack()
+        self.pause_checkbox = Checkbutton(self.root, text='Pause sniffing', variable=self.pause, command=self.on_pause)
+        self.pause_checkbox.pack()
+
         scrollbar = Scrollbar(self.root)
         scrollbar.pack(side=LEFT, fill=Y)
         self.packets_box = Listbox(self.root, yscrollcommand=scrollbar.set, height = 50, width = 125)
-
+        self.packets_box.bind('<Double-Button>', self.open_data)
         self.packets_box.pack(side=LEFT, fill=BOTH)
         scrollbar.config(command=self.packets_box.yview)
 
@@ -73,7 +75,6 @@ class UI:
         for filter in range(len(filters)):
             if filters[filter] in self.protocols:
                 self.filters.append(filters[filter])
-                print(self.filters)
 
         self.filter_change()
 
@@ -109,3 +110,21 @@ class UI:
 
         if self.pause == 0:
             self.root.after(100, self.update_packets)
+
+    def open_data(self, event=None):
+        selected = self.packets_box.curselection()
+        index = int(self.packets_box.get(selected[0]).split()[0])
+        packet = self.Sniffer.packets[index]
+
+        print(packet)
+
+        top = Toplevel(self.root)
+        top.title(f"Packet #{index}")
+
+        top.geometry("600x400")
+
+        label = Label(top, text=f"Packet #{index} Data:", font=(12))
+        label.pack(pady=10)
+
+        data = Label(top, text=packet['data'], font=(6))
+        data.pack()
