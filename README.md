@@ -5,10 +5,9 @@
 ## Goals
 
 - Simple and intuitive graphical interface (Tkinter)
-- Live packet sniffing with Scapy
 - Easily customizable and extendable
-- Fully written in Python
-
+- Save/Load sniffing seassions
+  
 ## Features
 
 - Live packet sniffing with Scapy
