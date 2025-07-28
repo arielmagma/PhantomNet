@@ -1,5 +1,4 @@
 from threading import *
-from time import *
 from tkinter import *
 
 ## Color pallet:
@@ -41,8 +40,9 @@ class UI:
         self.filter_frame.pack(anchor='n', pady=10)
         Label(self.filter_frame, text = 'Filters: ', font=(5), bg='#000000', fg='white').pack(side=LEFT)
         self.filter_entry = Entry(self.filter_frame)
-        self.filter_entry.bind('<KeyRelease>', self.get_filter)
         self.filter_entry.pack(side=RIGHT)
+        self.filter_button = Button(self.filter_frame, text='Filter', command=self.get_filter)
+        self.filter_button.pack(side=RIGHT)
 
         self.button_frame = Frame(self.root, bg='#000000')
         self.button_frame.pack(anchor='nw')
@@ -85,46 +85,46 @@ class UI:
         self.num_of_packets = 0
 
     def get_filter(self, event=None):
-        filters = self.filter_entry.get()
-        filters = filters.split()
-
-        self.filters = []
-        for filter in range(len(filters)):
-            if filters[filter] in self.protocols:
-                self.filters.append(filters[filter])
-            elif filters[filter].startswith('ip.src='):
-                self.filters.append(filters[filter])
-            elif filters[filter].startswith('ip.dst='):
-                self.filters.append(filters[filter])
-            elif filters[filter].startswith('port.dst='):
-                self.filters.append(filters[filter])
-            elif filters[filter].startswith('port.src='):
-                self.filters.append(filters[filter])
-
+        self.filters = self.filter_entry.get().split()
+        print(self.filters)
         self.filter_change()
 
-    def check_filter(self, packet):
-        if len(self.filters) != 0:
-            if packet['protocol'] in self.filters:
-                return True
-            elif f'ip.src={packet["src_ip"]}' in self.filters:
-                return True
-            elif f'ip.dst={packet["dst_ip"]}' in self.filters:
-                return True
-            elif f'port.src={packet["src_port"]}' in self.filters:
-                return True
-            elif f'port.dst={packet["dst_port"]}' in self.filters:
-                return True
-            else:
-                return False
+    def check_filter(self, packet, filter, index):
+        if filter[index] == 'ip.src' and filter[index+1] == '=' and type(filter[index+2]) == str:
+            filter[index:index+3] = [(packet['src_ip'] == filter[index+2])]
+        elif filter[index] == 'ip.dst' and filter[index+1] == '=' and type(filter[index+2]) == str:
+            filter[index:index+3] = [(packet['dst_ip'] == filter[index+2])]
+        elif filter[index] == 'port.src' and filter[index+1] == '=' and type(filter[index+2]) == str:
+            filter[index:index+3] = [packet['src_port'] == int(filter[index+2])]
+        elif filter[index] == 'port.dst' and filter[index+1] == '=' and type(filter[index+2]) == str:
+            filter[index:index+3] = [packet['dst_port'] == int(filter[index+2])]
         else:
+            del(filter[index])
+
+    def check_filters(self, packet):
+        i = 0
+        filter = self.filters.copy()
+        while i < len(filter):
+            if filter[i] == 'or':
+                self.check_filter(packet, filter, i+1)
+                filter[i-1:i+2] = [filter[i-1] or filter[i+1]]
+                i -= 1
+            elif filter[i] == 'and':
+                self.check_filter(packet, filter, i+1)
+                filter[i-1:i+2] = [filter[i-1] and filter[i+1]]
+                i -= 1
+            else:
+                self.check_filter(packet, filter, i)
+            i += 1
+        if len(filter) < 1:
             return True
+        return filter[0]
 
     def filter_change(self):
         self.packets_box.delete(0, END)
 
         for packet in self.Sniffer.get_packets():
-            if self.check_filter(packet):
+            if self.check_filters(packet):
                 self.packets_box.insert(END, self.packet_string(packet))
 
         self.num_of_packets = len(self.Sniffer.get_packets())
@@ -136,7 +136,7 @@ class UI:
         new_packets = self.Sniffer.get_packets()[self.num_of_packets:]
 
         for packet in new_packets:
-            if self.check_filter(packet):
+            if self.check_filters(packet):
                 self.packets_box.insert(END, self.packet_string(packet))
 
         self.num_of_packets += len(new_packets)
@@ -145,6 +145,39 @@ class UI:
             self.root.after(100, self.update_packets)
 
     def open_data(self, event=None):
+        def next_packet():
+            nonlocal index
+            if index < len(self.Sniffer.packets) - 1:
+                index += 1
+                top.title(f"Packet #{index}")
+                label.config(text=f"Packet #{index} Data:")
+                packet = self.Sniffer.packets[index]
+                raw_data = packet.get('data', b'')
+                if isinstance(raw_data, bytes):
+                    formatted_data = ' '.join(f"{byte:02X}" for byte in raw_data)
+                else:
+                    formatted_data = str(raw_data)
+                text.config(state="normal")
+                text.delete("1.0", END)
+                text.insert(END, formatted_data)
+                text.config(state="disabled")
+        def back_packet():
+            nonlocal index
+            if index > 0:
+                index -= 1
+                top.title(f"Packet #{index}")
+                label.config(text=f"Packet #{index} Data:")
+                packet = self.Sniffer.packets[index]
+                raw_data = packet.get('data', b'')
+                if isinstance(raw_data, bytes):
+                    formatted_data = ' '.join(f"{byte:02X}" for byte in raw_data)
+                else:
+                    formatted_data = str(raw_data)
+                text.config(state="normal")
+                text.delete("1.0", END)
+                text.insert(END, formatted_data)
+                text.config(state="disabled")
+
         selected = self.packets_box.curselection()
         index = int(self.packets_box.get(selected[0]).split()[0])
         packet = self.Sniffer.packets[index]
@@ -157,8 +190,16 @@ class UI:
         label = Label(top, text=f"Packet #{index} Data:", font=(12))
         label.pack(pady=10)
 
+        button_frame = Frame(top)
+        button_frame.pack(pady=10, padx=10)
+
+        next_button = Button(button_frame, text='Next', command=next_packet)
+        next_button.pack(side=RIGHT, padx=10)
+        back_button = Button(button_frame, text='Back', command=back_packet)
+        back_button.pack(side=LEFT, padx=10)
+
         frame = Frame(top)
-        frame.pack(expand=True, fill=BOTH, padx=10, pady=10)
+        frame.pack(expand=True, fill=BOTH, padx=10, side=TOP)
 
         scrollbar = Scrollbar(frame)
         scrollbar.pack(side=RIGHT, fill=Y)
@@ -173,7 +214,6 @@ class UI:
             formatted_data = ' '.join(f"{byte:02X}" for byte in raw_data)
         else:
             formatted_data = str(raw_data)
-
 
         text.insert(END, formatted_data)
         text.config(state="disabled")
