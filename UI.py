@@ -54,8 +54,10 @@ class UI:
 
         filter_frame = Frame(top_panel, bg='#232323')
         filter_frame.pack(side=LEFT, padx=15, pady=12)
+
         Label(filter_frame, text = 'Filters: ', font=('Segoe UI', 11, 'bold'), bg='#232323', fg='#fafafa').pack(side=LEFT, padx=(0, 8))
         self.filter_entry = Entry(filter_frame, font=('Segoe UI', 10), width=30, bg='#000000', fg='#ffffff', insertbackground='#fafafa', relief='flat')
+        self.filter_entry.bind('<Return>', self.get_filter)
         self.filter_entry.pack(side=LEFT)
         self.filter_button = Button(filter_frame, text='Filter', font=('Segoe UI', 10, 'bold'), command=self.get_filter, bg='#640000', fg='#fafafa', activebackground='#a03c3c', activeforeground='#ffffff', relief='flat')
         self.filter_button.pack(side=LEFT, padx=12)
@@ -139,13 +141,16 @@ class UI:
         elif filter[index] == 'port.dst' and filter[index+1] == '=' and type(filter[index+2]) == str:
             filter[index:index+3] = [packet['dst_port'] == int(filter[index+2])]
         elif filter[index] in self.protocols:
-            filter[index] = packet['protocol'] == filter[index]
+            filter[index] = (packet['protocol'] == filter[index])
+        elif filter[index] == '(':
+            index2 = filter.index(')', index)
+            print(index, index2, filter)
+            filter[index:index2+1] = [self.check_filters(packet, filter[index+1:index2])]
         else:
             del(filter[index])
 
-    def check_filters(self, packet):
+    def check_filters(self, packet, filter):
         i = 0
-        filter = self.filters.copy()
         while i < len(filter):
             if filter[i] == 'or':
                 self.check_filter(packet, filter, i+1)
@@ -168,7 +173,7 @@ class UI:
 
         idx = 0
         for packet in self.Sniffer.get_packets():
-            if self.check_filters(packet):
+            if self.check_filters(packet, self.filters.copy()):
                 tag = 'evenrow' if (self.num_of_packets + idx) % 2 == 0 else 'oddrow'
                 self.packets_box.insert('', 'end', values=self.packet_values(packet), tags=(tag,))
             idx += 1
@@ -180,7 +185,7 @@ class UI:
 
         idx = 0
         for packet in new_packets:
-            if self.check_filters(packet):
+            if self.check_filters(packet, self.filters.copy()):
                 tag = 'evenrow' if (self.num_of_packets + idx) % 2 == 0 else 'oddrow'
                 self.packets_box.insert('', 'end', values=self.packet_values(packet), tags=(tag,))
             idx += 1
