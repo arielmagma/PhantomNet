@@ -18,6 +18,8 @@ class sniffer:
         self.packets.append({'protocol': protocol, 'src_ip': src_ip, 'src_port': src_port, 'dst_ip': dst_ip, 'dst_port': dst_port, 'id': len(self.packets), 'data': data})
 
     def get_data(self, packet):
+        if packet.haslayer(TCP) and (packet[TCP].dport == 80 or packet[TCP].sport == 80):
+            print(self.bytes_to_hex(bytes(packet)), '\n\n\n')
         if Raw in packet:
             return self.bytes_to_hex(packet[Raw].load)
         try:
@@ -25,15 +27,8 @@ class sniffer:
         except Exception:
             return None
 
-    def bytes_to_hex(self, data, width=8):
-        lines = []
-        for offset in range(0, len(data), width):
-            chunk = data[offset:offset + width]
-            hex_bytes = ' '.join(f"{b:02X}" for b in chunk)
-            hex_bytes_padded = hex_bytes.ljust(width * 3 - 1)
-            ascii_bytes = ''.join(chr(b) if 32 <= b <= 126 else '.' for b in chunk)
-            lines.append(f"{offset:04X}  {hex_bytes_padded}  {ascii_bytes}")
-        return '\n'.join(lines)
+    def bytes_to_hex(self, data):
+        return data.hex().upper()
 
     def get_packet_information(self, packet):
         protocol = self.identify_protocol(packet)

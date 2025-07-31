@@ -1,7 +1,9 @@
 from threading import Thread
 from tkinter import *
 from tkinter import ttk
-import time
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import matplotlib.pyplot as plt
+from decoder import decode
 
 ## Color pallet:
 # Black: #000000
@@ -11,15 +13,15 @@ import time
 # Text: #fafafa
 
 class UI:
-    def __init__(self, Sniffer):
-        self.protocols = ['HTTP', 'HTTPS', 'TCP', 'DNS', 'UDP', 'ICMP', 'ARP', 'Raw', 'IP', 'IPv6', 'SMTP', 'SSH', 'FTP', 'DHCP', 'Unknown']
+    def __init__(self, Sniffer, Filter):
         self.root = None
         self.title = None
         self.filter_entry = None
         self.packets_box = None
 
+        self.filter = Filter
         self.Sniffer = Sniffer
-        self.filters = []
+        self.statistics = {'packets': 0}
         self.pause = 0
 
         self.num_of_packets = 0
@@ -36,11 +38,14 @@ class UI:
 
         self.menu_bar = Menu(self.root, bg='#232323', fg='#fafafa', relief='flat')
         file_menu = Menu(self.menu_bar, tearoff=0, bg='#232323', fg='#fafafa')
-        file_menu.add_command(label='Exit', command=self.root.quit)
+        file_menu.add_command(label='Exit', command=self.on_close)
         self.menu_bar.add_cascade(label='File', menu=file_menu)
         help_menu = Menu(self.menu_bar, tearoff=0, bg='#232323', fg='#fafafa')
-        help_menu.add_command(label='About', command=lambda: self.show_about())
+        help_menu.add_command(label='About', command=self.show_about)
         self.menu_bar.add_cascade(label='Help', menu=help_menu)
+        stats_menu = Menu(self.menu_bar, tearoff=0, bg='#232323', fg='#fafafa')
+        stats_menu.add_command(label='Stats', command=self.open_statistics)
+        self.menu_bar.add_cascade(label='Stats', menu=stats_menu)
         self.root.config(menu=self.menu_bar)
 
         self.setup_widgets()
@@ -126,46 +131,11 @@ class UI:
             self.packets_box.delete(item)
         self.Sniffer.packets = []
         self.num_of_packets = 0
+        self.statistics = {'packets': 0}
 
     def get_filter(self, event=None):
-        self.filters = self.filter_entry.get().split()
+        self.filter.update_filter(self.filter_entry.get())
         self.filter_change()
-
-    def check_filter(self, packet, filter, index):
-        if filter[index] == 'ip.src' and filter[index+1] == '=' and type(filter[index+2]) == str:
-            filter[index:index+3] = [(packet['src_ip'] == filter[index+2])]
-        elif filter[index] == 'ip.dst' and filter[index+1] == '=' and type(filter[index+2]) == str:
-            filter[index:index+3] = [(packet['dst_ip'] == filter[index+2])]
-        elif filter[index] == 'port.src' and filter[index+1] == '=' and type(filter[index+2]) == str:
-            filter[index:index+3] = [packet['src_port'] == int(filter[index+2])]
-        elif filter[index] == 'port.dst' and filter[index+1] == '=' and type(filter[index+2]) == str:
-            filter[index:index+3] = [packet['dst_port'] == int(filter[index+2])]
-        elif filter[index] in self.protocols:
-            filter[index] = (packet['protocol'] == filter[index])
-        elif filter[index] == '(':
-            index2 = filter.index(')', index)
-            print(index, index2, filter)
-            filter[index:index2+1] = [self.check_filters(packet, filter[index+1:index2])]
-        else:
-            del(filter[index])
-
-    def check_filters(self, packet, filter):
-        i = 0
-        while i < len(filter):
-            if filter[i] == 'or':
-                self.check_filter(packet, filter, i+1)
-                filter[i-1:i+2] = [filter[i-1] or filter[i+1]]
-                i -= 1
-            elif filter[i] == 'and':
-                self.check_filter(packet, filter, i+1)
-                filter[i-1:i+2] = [filter[i-1] and filter[i+1]]
-                i -= 1
-            else:
-                self.check_filter(packet, filter, i)
-            i += 1
-        if len(filter) < 1:
-            return True
-        return filter[0]
 
     def filter_change(self):
         for item in self.packets_box.get_children():
@@ -173,7 +143,7 @@ class UI:
 
         idx = 0
         for packet in self.Sniffer.get_packets():
-            if self.check_filters(packet, self.filters.copy()):
+            if self.filter.check_filters(packet):
                 tag = 'evenrow' if (self.num_of_packets + idx) % 2 == 0 else 'oddrow'
                 self.packets_box.insert('', 'end', values=self.packet_values(packet), tags=(tag,))
             idx += 1
@@ -185,10 +155,15 @@ class UI:
 
         idx = 0
         for packet in new_packets:
-            if self.check_filters(packet, self.filters.copy()):
+            if self.filter.check_filters(packet):
                 tag = 'evenrow' if (self.num_of_packets + idx) % 2 == 0 else 'oddrow'
                 self.packets_box.insert('', 'end', values=self.packet_values(packet), tags=(tag,))
             idx += 1
+            if packet['protocol'] in self.statistics.keys():
+                self.statistics[packet['protocol']] += 1
+            else:
+                self.statistics[packet['protocol']] = 1
+            self.statistics['packets'] += 1
 
         self.num_of_packets += len(new_packets)
 
@@ -199,24 +174,33 @@ class UI:
         return (packet['id'], packet['protocol'], packet['src_ip'], packet['src_port'], packet['dst_ip'], packet['dst_port'])
 
     def open_data(self, event=None):
-        # Get selected item from Treeview
+        def format_hex_ascii(data):
+            lines = []
+            bytes_per_line = 8
+            for i in range(0, len(data), bytes_per_line):
+                chunk = data[i:i+bytes_per_line]
+                hex_part = ' '.join(f"{b:02X}" for b in chunk)
+                ascii_part = ''.join(chr(b) if 32 <= b <= 126 else '.' for b in chunk)
+                offset = f"{i:04X}"
+                hex_part = hex_part.ljust(3 * bytes_per_line - 1)
+                line = f"{offset}  {hex_part}  {ascii_part}"
+                lines.append(line)
+            return '\n'.join(lines)
+
         selected = self.packets_box.selection()
         if not selected:
             return
         index = int(self.packets_box.item(selected[0])["values"][0])
         packet = self.Sniffer.packets[index]
 
-        # --- UI Window ---
         top = Toplevel(self.root)
         top.title(f"Packet #{index}")
         top.geometry("750x500")
         top.config(bg='#232323')
 
-        # --- Title Label ---
         label = Label(top, text=f"Packet #{index} Data:", font=('Segoe UI', 12, 'bold'), bg='#232323', fg='#fafafa')
         label.pack(pady=(16, 8))
 
-        # --- Navigation Buttons ---
         button_frame = Frame(top, bg='#232323')
         button_frame.pack(pady=8, padx=16)
 
@@ -230,9 +214,10 @@ class UI:
                 pkt = self.Sniffer.packets[index]
                 raw_data = pkt.get('data', b'')
                 if isinstance(raw_data, bytes):
-                    formatted_data = ' '.join(f"{byte:02X}" for byte in raw_data)
+                    formatted_data = format_hex_ascii(raw_data)
                 else:
-                    formatted_data = str(raw_data)
+                    raw_bytes = bytes.fromhex(raw_data)
+                    formatted_data = format_hex_ascii(raw_bytes)
                 text.config(state="normal")
                 text.delete("1.0", END)
                 text.insert(END, formatted_data)
@@ -248,9 +233,10 @@ class UI:
                 pkt = self.Sniffer.packets[index]
                 raw_data = pkt.get('data', b'')
                 if isinstance(raw_data, bytes):
-                    formatted_data = ' '.join(f"{byte:02X}" for byte in raw_data)
+                    formatted_data = format_hex_ascii(raw_data)
                 else:
-                    formatted_data = str(raw_data)
+                    raw_bytes = bytes.fromhex(raw_data)
+                    formatted_data = format_hex_ascii(raw_bytes)
                 text.config(state="normal")
                 text.delete("1.0", END)
                 text.insert(END, formatted_data)
@@ -311,18 +297,31 @@ class UI:
             font=('Consolas', 13),
             bg='#000000',
             fg='#fafafa',
-            height=16,  # bigger height
-            width=44    # bigger width
+            height=16,
+            width=44
         )
         text.pack(side=LEFT, fill=BOTH, expand=True)
         scrollbar.config(command=text.yview)
 
-        # --- Initial render ---
         render_details(index)
         raw_data = packet.get('data', b'')
+
         if isinstance(raw_data, bytes):
-            formatted_data = ' '.join(f"{byte:02X}" for byte in raw_data)
+            formatted_data = format_hex_ascii(raw_data)
         else:
-            formatted_data = str(raw_data)
+            try:
+                raw_bytes = bytes.fromhex(raw_data)
+                formatted_data = format_hex_ascii(raw_bytes)
+            except:
+                formatted_data = str(raw_data)
+
         text.insert(END, formatted_data)
         text.config(state="disabled")
+
+    def show_about(self):
+        pass
+
+    def open_statistics(self):
+        top = Toplevel(self.root)
+        for protocol in self.statistics.keys():
+            Label(top, text=f'{protocol}: {self.statistics[protocol]}').pack()
