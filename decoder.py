@@ -17,6 +17,23 @@ def arp_decode(packet_data):
             'TPA': f'{int(packet_data[48:50], 16)}.{int(packet_data[50:52], 16)}.{int(packet_data[52:54], 16)}.{int(packet_data[54:56], 16)}'}
     return data
 
+def IPv6_decode(packet_data):
+    data = {}
+
+    first_4_bytes = int(packet_data[0:8], 16)
+    data['Version'] = (first_4_bytes >> 28) & 0xF
+    data['Traffic Class'] = (first_4_bytes >> 20) & 0xFF
+    data['Flow Label'] = first_4_bytes & 0xFFFFF
+    data['Payload Length'] = int(packet_data[8:12], 16)
+    data['Next Header'] = int(packet_data[12:14], 16)
+    data['Hop Limit'] = int(packet_data[14:16], 16)
+
+    data['Source IP'] = f'{packet_data[16:20]}:{packet_data[20:24]}:{packet_data[24:28]}:{packet_data[28:32]}:{packet_data[32:36]}:{packet_data[36:40]}:{packet_data[40:44]}:{packet_data[44:48]}'
+    data['Destination IP'] = f'{packet_data[48:52]}:{packet_data[52:56]}:{packet_data[56:60]}:{packet_data[60:64]}:{packet_data[64:68]}:{packet_data[68:72]}:{packet_data[72:76]}:{packet_data[76:80]}'
+    data['Data'] = packet_data[80:]
+
+    return data
+
 def IPv4_decode(packet_data):
     data = {'Version': 0, 'IHL': 0, 'Type of Service': int(packet_data[2:4]),
             'Length': int(packet_data[4:8], 16), 'Identification': int(packet_data[8:12], 16),
@@ -114,7 +131,17 @@ def udp_decode(packet_data):
 
     return data
 
-handler = {'ARP': arp_decode, 'IPv4': IPv4_decode, 'TCP': tcp_decode, 'UDP': udp_decode, 'Ethernet': Ethernet_decode}
+def icmp_decode(packet_data):
+    data = {}
+
+    data['Type'] = int(packet_data[0:2], 16)
+    data['Code'] = int(packet_data[2:4], 16)
+    data['Checksum'] = int(packet_data[4:8], 16)
+    data['Rest of Header'] = packet_data[8:16]
+    data['Data'] = packet_data[16:]
+    return data
+
+handler = {'ARP': arp_decode, 'IPv6':IPv6_decode, 'IPv4': IPv4_decode, 'TCP': tcp_decode, 'UDP': udp_decode, 'Ethernet': Ethernet_decode, 'ICMP': icmp_decode}
 
 def decode(packet):
         return handler[packet['protocol']](packet['data'])
