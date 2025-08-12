@@ -1,8 +1,6 @@
 from threading import Thread
 from tkinter import *
 from tkinter import ttk
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-import matplotlib.pyplot as plt
 from decoder import decode
 
 ## Color pallet:
@@ -174,19 +172,6 @@ class UI:
         return (packet['id'], packet['protocol'], packet['src_ip'], packet['src_port'], packet['dst_ip'], packet['dst_port'])
 
     def open_data(self, event=None):
-        def format_hex_ascii(data):
-            lines = []
-            bytes_per_line = 8
-            for i in range(0, len(data), bytes_per_line):
-                chunk = data[i:i+bytes_per_line]
-                hex_part = ' '.join(f"{b:02X}" for b in chunk)
-                ascii_part = ''.join(chr(b) if 32 <= b <= 126 else '.' for b in chunk)
-                offset = f"{i:04X}"
-                hex_part = hex_part.ljust(3 * bytes_per_line - 1)
-                line = f"{offset}  {hex_part}  {ascii_part}"
-                lines.append(line)
-            return '\n'.join(lines)
-
         selected = self.packets_box.selection()
         if not selected:
             return

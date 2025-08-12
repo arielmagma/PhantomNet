@@ -60,9 +60,9 @@ def tcp_decode(packet_data):
             'SEQ': int(packet_data[8:16], 16), 'ACK': int(packet_data[16:24], 16)}
 
     byte_12 = int(packet_data[24:26], 16)
-    data['DO'] = byte_12 >> 4        # high nibble: Data Offset (4 bits)
-    data['Reserved'] = (byte_12 >> 1) & 0x7  # bits 3-1 (3 bits)
-    data['NS'] = byte_12 & 0x1       # bit 0 (1 bit)
+    data['DO'] = byte_12 >> 4
+    data['Reserved'] = (byte_12 >> 1) & 0x7
+    data['NS'] = byte_12 & 0x1
 
     flags = int(packet_data[26:28], 16)
     data['Flags'] = {
