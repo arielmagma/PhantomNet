@@ -6,13 +6,14 @@
 
 - Simple and intuitive graphical interface (Tkinter)
 - Easily customizable and extendable
-- Save/Load sniffing sessions
+- Load sniffing sessions
   
 ## Features
 
 - Live packet sniffing with Scapy
 - Packet filtering
 - Fully written in Python
+- Save sniffing sessions
 
 ## Tech Stack
 
