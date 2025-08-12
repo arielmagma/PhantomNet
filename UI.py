@@ -1,14 +1,8 @@
 from threading import Thread
 from tkinter import *
 from tkinter import ttk
-from decoder import decode
-
-## Color pallet:
-# Black: #000000
-# Dark Gray: #232323
-# Dark Red: #640000
-# Dark Green: #004b00
-# Text: #fafafa
+from file_handler import save_session, load_session
+from packet_handler import get_packet_data
 
 class UI:
     def __init__(self, Sniffer, Filter):
@@ -37,6 +31,8 @@ class UI:
         self.menu_bar = Menu(self.root, bg='#232323', fg='#fafafa', relief='flat')
         file_menu = Menu(self.menu_bar, tearoff=0, bg='#232323', fg='#fafafa')
         file_menu.add_command(label='Exit', command=self.on_close)
+        file_menu.add_command(label='Save', command=self.save)
+        file_menu.add_command(label='Load', command=self.load)
         self.menu_bar.add_cascade(label='File', menu=file_menu)
         help_menu = Menu(self.menu_bar, tearoff=0, bg='#232323', fg='#fafafa')
         help_menu.add_command(label='About', command=self.show_about)
@@ -77,11 +73,11 @@ class UI:
 
         columns = ("ID", 'PROTOCOL', "Src IP", 'Src Port', "Dst IP", 'Dst port',)
         self.packets_box = ttk.Treeview(main_panel, columns=columns, show='headings', selectmode='browse', height=20)
-        self.packets_box.tag_configure('evenrow', background='#4b4b4b')
-        self.packets_box.tag_configure('oddrow', background='#484848')
+        self.packets_box.tag_configure('evenrow', background='#2b2b2b')
+        self.packets_box.tag_configure('oddrow', background='#282828')
         style = ttk.Style()
         style.theme_use('clam')
-        style.map("Treeview", background=[("selected", "#323232")])
+        style.map("Treeview", background=[("selected", "#2f2f2f")])
         style.configure("Treeview", rowheight=25)
         style.layout("Treeview", [
             ('Treeview.field', {'sticky': 'nswe', 'children': [
@@ -94,7 +90,7 @@ class UI:
         style.configure('Treeview.Heading', background='#232323', foreground='#fafafa', font=('Segoe UI', 10, 'bold'))
         for col in columns:
             self.packets_box.heading(col, text=col)
-            self.packets_box.column(col, anchor=CENTER, width=120 if col!="Protocol" else 90)
+            self.packets_box.column(col, anchor=CENTER, width=180 if col in ("Source IP", "Destination IP") else (120 if col != "Protocol" else 90))
         self.packets_box.pack(fill=BOTH, expand=TRUE, side=LEFT, padx=2, pady=2)
 
         scrollbar = Scrollbar(main_panel, command=self.packets_box.yview)
@@ -109,7 +105,6 @@ class UI:
 
         if self.sniffing_thread and self.sniffing_thread.is_alive():
             self.sniffing_thread.join()
-
         self.root.destroy()
 
     def on_pause(self):
@@ -169,7 +164,9 @@ class UI:
             self.root.after(75, self.update_packets)
 
     def packet_values(self, packet):
-        return (packet['id'], packet['protocol'], packet['src_ip'], packet['src_port'], packet['dst_ip'], packet['dst_port'])
+        src_ip, dst_ip, src_port, dst_port, protocol = get_packet_data(packet['Data'])
+
+        return (packet['id'], protocol, src_ip, src_port, dst_ip, dst_port)
 
     def open_data(self, event=None):
         selected = self.packets_box.selection()
@@ -310,3 +307,9 @@ class UI:
         top = Toplevel(self.root)
         for protocol in self.statistics.keys():
             Label(top, text=f'{protocol}: {self.statistics[protocol]}').pack()
+
+    def save(self):
+        save_session(self.Sniffer.get_packets())
+
+    def load(self):
+        self.Sniffer.set_packets(load_session())

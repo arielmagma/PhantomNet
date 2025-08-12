@@ -4,7 +4,20 @@ def Ethernet_decode(packet_data):
     data['Destination MAC'] = f'{packet_data[0:2]}:{packet_data[2:4]}:{packet_data[4:6]}:{packet_data[6:8]}:{packet_data[8:10]}:{packet_data[10:12]}'
     data['Source MAC'] = f'{packet_data[12:14]}:{packet_data[14:16]}:{packet_data[16:18]}:{packet_data[18:20]}:{packet_data[20:22]}:{packet_data[22:24]}'
     data['Protocol'] = int(packet_data[24:28], 16)
-    data['Data'] = packet_data[28:]
+
+    if data['Protocol'] == 2048:
+        data['Protocol'] = 'IPv4'
+        data['Data'] = IPv4_decode(packet_data[28:])
+    elif data['Protocol'] == 34525:
+        data['Protocol'] = 'IPv6'
+        data['Data'] = IPv6_decode(packet_data[28:])
+    elif data['Protocol'] == 2054:
+        data['Protocol'] = 'ARP'
+        data['Data'] = arp_decode(packet_data[28:])
+    elif data['Protocol'] == 33025:
+        data['Protocol'] = 'VLAN'
+    else:
+        data['Data'] = packet_data[28:]
 
     return data
 
@@ -30,7 +43,17 @@ def IPv6_decode(packet_data):
 
     data['Source IP'] = f'{packet_data[16:20]}:{packet_data[20:24]}:{packet_data[24:28]}:{packet_data[28:32]}:{packet_data[32:36]}:{packet_data[36:40]}:{packet_data[40:44]}:{packet_data[44:48]}'
     data['Destination IP'] = f'{packet_data[48:52]}:{packet_data[52:56]}:{packet_data[56:60]}:{packet_data[60:64]}:{packet_data[64:68]}:{packet_data[68:72]}:{packet_data[72:76]}:{packet_data[76:80]}'
-    data['Data'] = packet_data[80:]
+
+    if data['Next Header'] == 6:
+        data['Next Header'] = 'TCP'
+        data['Data'] = tcp_decode(packet_data[80:])
+    elif data['Next Header'] == 17:
+        data['Next Header'] = 'UDP'
+        data['Data'] = udp_decode(packet_data[80:])
+    elif data['Next Header'] == 58:
+        data['Next Header'] = 'ICMPv6'
+    else:
+        data['Data'] = packet_data[packet_data[80:]]
 
     return data
 
@@ -47,11 +70,16 @@ def IPv4_decode(packet_data):
     data['IHL'] = first_byte & 0x0F
 
     if data['Protocol'] == 6:
+        data['Protocol'] = 'TCP'
         data['Data'] = tcp_decode(packet_data[data['IHL'] * 4 * 2:])
     elif data['Protocol'] == 17:
+        data['Protocol'] = 'UDP'
         data['Data'] = udp_decode(packet_data[data['IHL'] * 4 * 2:])
+    elif data['Protocol'] == 1:
+        data['Protocol'] = 'ICMP'
+        data['Data'] = icmp_decode(packet_data[data['IHL'] * 4 * 2:])
     else:
-        data['Data'] = packet_data[data['IHL'] * 4 * 2]
+        data['Data'] = packet_data[data['IHL'] * 4 * 2:]
 
     return data
 
@@ -141,7 +169,14 @@ def icmp_decode(packet_data):
     data['Data'] = packet_data[16:]
     return data
 
-handler = {'ARP': arp_decode, 'IPv6':IPv6_decode, 'IPv4': IPv4_decode, 'TCP': tcp_decode, 'UDP': udp_decode, 'Ethernet': Ethernet_decode, 'ICMP': icmp_decode}
+handler = {'ARP': arp_decode, 'IPv6': IPv6_decode, 'IPv4': IPv4_decode, 'TCP': tcp_decode, 'UDP': udp_decode, 'Ethernet': Ethernet_decode, 'ICMP': icmp_decode}
 
-def decode(packet):
-        return handler[packet['protocol']](packet['data'])
+def decode(packet, protocol):
+        return handler[protocol](packet)
+
+def get_first_layer(packet):
+    try:
+        if Ethernet_decode(packet):
+            return 'Ethernet'
+    except Exception:
+        return 'Raw'
