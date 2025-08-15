@@ -1,5 +1,6 @@
 from scapy.all import *
 from decoder import get_first_layer, decode
+from packet_handler import get_protocol
 
 class sniffer:
     def __init__(self):
@@ -13,10 +14,12 @@ class sniffer:
         return self.pause
 
     def proccess_packet(self, packet):
-        packet_data = self.bytes_to_hex(bytes(packet))
-        protocol = get_first_layer(packet_data)
-        data = decode(packet_data, protocol)
-        self.packets.append({'id': len(self.packets), 'protocol': protocol, 'Data': data})
+        hex_data = self.bytes_to_hex(bytes(packet))
+        protocol = get_first_layer(hex_data)
+        data = decode(hex_data, protocol)
+        protocol = get_protocol(data)
+
+        self.packets.append({'id': len(self.packets), 'protocol': protocol, 'Data': data, 'Hex': hex_data})
 
     def get_data(self, packet):
         try:

@@ -1,5 +1,6 @@
 from tkinter import filedialog
 from datetime import datetime
+from decoder import get_first_layer, decode
 
 def binary(text):
     return text.encode('utf-8')
@@ -51,7 +52,7 @@ def save_session(packets):
 
     for packet in packets:
         file.write(b'\n\n')
-        file.write(hex_to_bin(packet["Data"]))
+        file.write(hex_to_bin(packet["Hex"]))
 
     file.close()
 
@@ -72,7 +73,11 @@ def load_version_1(num_packets, packets):
     packets_list = []
 
     for packet in range(num_packets):
-        packets_list.append(bin_to_hex(packets[packet]))
+        hex = bin_to_hex(packets[packet])
+        packet_dict = {'id': packet, 'protocol': get_first_layer(hex), 'Data': decode(hex, get_first_layer(hex)),'Hex': hex}
+        print(packet_dict['Data'])
+        packets_list.append(packet_dict)
+        print(packets_list[-1])
 
     return packets_list
 

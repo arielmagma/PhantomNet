@@ -1,3 +1,15 @@
+def hex_to_ascii(packet_data):
+    data = ''
+
+    for index in range(0, len(packet_data), 2):
+        value = int(packet_data[index:index+2], 16)
+        if 32 < value < 127:
+            data += chr(value)
+        else:
+            data += '•'
+
+    return data
+
 def Ethernet_decode(packet_data):
     data = {}
 
@@ -58,7 +70,7 @@ def IPv6_decode(packet_data):
     return data
 
 def IPv4_decode(packet_data):
-    data = {'Version': 0, 'IHL': 0, 'Type of Service': int(packet_data[2:4]),
+    data = {'Version': 0, 'IHL': 0, 'Type of Service': int(packet_data[2:4], 16),
             'Length': int(packet_data[4:8], 16), 'Identification': int(packet_data[8:12], 16),
             'Flags': int(packet_data[12:16], 16), 'TTL': int(packet_data[16:18], 16),
             'Protocol': int(packet_data[18:20], 16), 'Header Checksum': int(packet_data[20:24], 16),
@@ -78,6 +90,9 @@ def IPv4_decode(packet_data):
     elif data['Protocol'] == 1:
         data['Protocol'] = 'ICMP'
         data['Data'] = icmp_decode(packet_data[data['IHL'] * 4 * 2:])
+    elif data['Protocol'] == 2:
+        data['Protocol'] = 'IGMPv3'
+        data['Data'] = packet_data[data['IHL'] * 4 * 2:]
     else:
         data['Data'] = packet_data[data['IHL'] * 4 * 2:]
 
@@ -155,8 +170,7 @@ def tcp_decode(packet_data):
 def udp_decode(packet_data):
     data = {'Source Port': int(packet_data[0:4], 16), 'Destination Port': int(packet_data[4:8], 16),
             'Length': int(packet_data[8:12], 16), 'Checksum': int(packet_data[12:16], 16),
-            'Data': bytes.fromhex(packet_data[16:]).decode(errors='ignore')}
-
+            'Data': hex_to_ascii(packet_data[16:])}
     return data
 
 def icmp_decode(packet_data):
@@ -169,14 +183,18 @@ def icmp_decode(packet_data):
     data['Data'] = packet_data[16:]
     return data
 
-handler = {'ARP': arp_decode, 'IPv6': IPv6_decode, 'IPv4': IPv4_decode, 'TCP': tcp_decode, 'UDP': udp_decode, 'Ethernet': Ethernet_decode, 'ICMP': icmp_decode}
+def Raw(packet):
+    return {'Data': packet}
+
+handler = {'ARP': arp_decode, 'IPv6': IPv6_decode, 'IPv4': IPv4_decode, 'TCP': tcp_decode, 'UDP': udp_decode, 'Ethernet': Ethernet_decode, 'ICMP': icmp_decode, 'Raw': Raw}
 
 def decode(packet, protocol):
-        return handler[protocol](packet)
+    return handler[protocol](packet)
 
 def get_first_layer(packet):
     try:
         if Ethernet_decode(packet):
             return 'Ethernet'
-    except Exception:
+    except Exception as e:
+        print('[Error in decoder]', packet, '\n', e.args)
         return 'Raw'

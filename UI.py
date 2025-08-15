@@ -166,7 +166,7 @@ class UI:
     def packet_values(self, packet):
         src_ip, dst_ip, src_port, dst_port, protocol = get_packet_data(packet['Data'])
 
-        return (packet['id'], protocol, src_ip, src_port, dst_ip, dst_port)
+        return packet['id'], protocol, src_ip, src_port, dst_ip, dst_port
 
     def open_data(self, event=None):
         selected = self.packets_box.selection()
@@ -286,18 +286,18 @@ class UI:
         scrollbar.config(command=text.yview)
 
         render_details(index)
-        raw_data = packet.get('data', b'')
+        raw_data = packet['Hex']
 
-        if isinstance(raw_data, bytes):
-            formatted_data = format_hex_ascii(raw_data)
-        else:
-            try:
-                raw_bytes = bytes.fromhex(raw_data)
-                formatted_data = format_hex_ascii(raw_bytes)
-            except:
-                formatted_data = str(raw_data)
+#        if isinstance(raw_data, bytes):
+#            formatted_data = raw_data
+ #       else:
+#            try:
+#                raw_bytes = bytes.fromhex(raw_data)
+#                formatted_data = format_hex_ascii(raw_bytes)
+#            except:
+#                formatted_data = str(raw_data)
 
-        text.insert(END, formatted_data)
+        text.insert(END, raw_data)
         text.config(state="disabled")
 
     def show_about(self):
@@ -312,4 +312,6 @@ class UI:
         save_session(self.Sniffer.get_packets())
 
     def load(self):
+        self.on_clear()
         self.Sniffer.set_packets(load_session())
+        self.update_packets()
