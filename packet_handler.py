@@ -42,16 +42,48 @@ def get_protocol(packet):
     return protocol
 
 def get_ip_src(packet):
-    pass
+    data = packet['Data']
+
+    while isinstance(data, dict):
+        if 'Source IP' in data:
+            return data['Source IP']
+        else:
+            data = data['Data']
+
+    return 'None'
 
 def get_ip_dst(packet):
-    pass
+    data = packet['Data']
+
+    while isinstance(data, dict):
+        if 'Destination IP' in data:
+            return data['Destination IP']
+        else:
+            data = data['Data']
+
+    return 'None'
 
 def get_port_src(packet):
-    pass
+    data = packet['Data']
+
+    while isinstance(data, dict):
+        if 'Source Port' in data:
+            return data['Source Port']
+        else:
+            data = data['Data']
+
+    return 'None'
 
 def get_port_dst(packet):
-    pass
+    data = packet['Data']
+
+    while isinstance(data, dict):
+        if 'Destination Port' in data:
+            return data['Destination Port']
+        else:
+            data = data['Data']
+
+    return 'None'
 
 def get_raw_data(packet):
     pass

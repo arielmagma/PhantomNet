@@ -1,4 +1,4 @@
-from Filter import Filter
+from filter import Filter
 from sniffer import sniffer
 from UI import UI
 

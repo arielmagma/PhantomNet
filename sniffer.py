@@ -8,12 +8,12 @@ class sniffer:
         self.pause = 0
 
     def sniffing(self):
-        sniff(prn = self.proccess_packet, stop_filter=self.check_sniffing)
+        sniff(prn = self.process_packet, stop_filter=self.check_sniffing)
 
     def check_sniffing(self, packet):
         return self.pause
 
-    def proccess_packet(self, packet):
+    def process_packet(self, packet):
         hex_data = self.bytes_to_hex(bytes(packet))
         protocol = get_first_layer(hex_data)
         data = decode(hex_data, protocol)

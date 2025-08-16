@@ -192,9 +192,7 @@ def decode(packet, protocol):
     return handler[protocol](packet)
 
 def get_first_layer(packet):
-    try:
-        if Ethernet_decode(packet):
-            return 'Ethernet'
-    except Exception as e:
-        print('[Error in decoder]', packet, '\n', e.args)
-        return 'Raw'
+    if Ethernet_decode(packet):
+        return 'Ethernet'
+        #print('[Error in decoder]', packet, '\n', e.args)
+        #return 'Raw'

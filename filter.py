@@ -1,6 +1,8 @@
+from packet_handler import get_protocol, get_ip_dst, get_ip_src, get_port_dst, get_port_src
+
 class Filter:
     def __init__(self):
-        self.protocols = ['HTTP', 'HTTPS', 'TCP', 'DNS', 'UDP', 'ICMP', 'ARP', 'Raw', 'IP', 'IPv6', 'SMTP', 'SSH', 'FTP', 'DHCP', 'Unknown']
+        self.protocols = ['HTTP', 'HTTPS', 'TCP', 'DNS', 'UDP', 'ICMP', 'ARP', 'Raw', 'IP', 'IPv6', 'SMTP', 'SSH', 'FTP', 'DHCP', 'IGMPv3', 'Unknown']
         self.filter = []
 
     def update_filter(self, filter):
@@ -12,12 +14,12 @@ class Filter:
         :param filter: the filter stright from the filter_entry
         :return: None
         '''
-
         self.filter = filter.split()
+
         index = 0
         while index < len(self.filter):
             if self.filter[index] == 'ip.src' or self.filter[index] == 'ip.dst':
-                if self.filter[index+1] == '=':
+                if self.filter[index+1] == '==' or self.filter[index+1] == '!=':
                     if len(self.filter) - index > 2:
                         if not self.check_ip(self.filter[index+2]):
                             del self.filter[index:index+3]
@@ -32,10 +34,25 @@ class Filter:
                     del self.filter[index:index+3]
                     self.check_logic(index)
             elif self.filter[index] == 'port.src' or self.filter[index] == 'port.dst':
-                if self.filter[index+1] == '=':
+                if self.filter[index+1] == '==' or self.filter[index+1] == '!=':
                     if len(self.filter) - index > 2:
                         if not self.check_port(self.filter[index+2]):
                             del self.filter[index:index+3]
+                            self.check_logic(index)
+                        else:
+                            index += 3
+                            continue
+                    else:
+                        del self.filter[index:index+2]
+                        self.check_logic(index)
+                else:
+                    del self.filter[index:index+3]
+                    self.check_logic(index)
+            elif self.filter[index] == 'id':
+                if self.filter[index+1] == '==' or self.filter[index+1] == '!=' or self.filter[index+1] == '>' or self.filter[index+1] == '<':
+                    if len(self.filter) - index > 2:
+                        if not self.filter[index+2].isdigit():
+                            del self.filter[index]
                             self.check_logic(index)
                         else:
                             index += 3
@@ -53,6 +70,12 @@ class Filter:
                     index += 1
                 else:
                     del self.filter[index]
+            elif self.filter[index] == 'not':
+                print(index, len(self.filter), self.filter)
+                if index < len(self.filter) - 1:
+                    index += 1
+                else:
+                    del self.filter[index]
             else:
                 del self.filter[index]
 
@@ -64,10 +87,10 @@ class Filter:
         '''
 
         if len(self.filter) - index > 0:
-            if self.filter[index] == 'and' or self.filter[index] == 'or':
+            if self.filter[index] == 'and' or self.filter[index] == 'or' or self.filter[index] == 'not':
                 del self.filter[index]
         elif index > 0 and index - 1 < len(self.filter):
-            if self.filter[index-1] == 'and' or self.filter[index-1] == 'or':
+            if self.filter[index-1] == 'and' or self.filter[index-1] == 'or' or self.filter[index-1] == 'not':
                 del self.filter[index-1]
 
     def check_ip(self, ip):
@@ -79,7 +102,17 @@ class Filter:
 
         valid = True
 
-        if not any(char.isdigit() for char in ip):
+        if ip == 'None':
+            valid = True
+        elif ':' in ip and len(ip.split(':')) == 8:
+            hex = '0123456789ABCDEF'
+
+            for char in ip: # Check if all chars in ip address are in Hex base
+                if not ':':
+                    if char not in hex:
+                        valid = False
+
+        elif not any(char.isdigit() for char in ip):
             valid = False
         else:
             ip_parts = ip.split('.')
@@ -88,10 +121,7 @@ class Filter:
                 valid = False
             else:
                 for part in ip_parts:
-                    if part.isdigit():
-                        if int(part) < 0 or int(part) > 255:
-                            valid = False
-                    else:
+                    if int(part) < 0 or int(part) > 255:
                         valid = False
 
         return valid
@@ -123,14 +153,35 @@ class Filter:
         :return: none
         '''
 
-        if filter[index] == 'ip.src' and filter[index+1] == '=' and type(filter[index+2]) == str:
-            filter[index:index+3] = [(packet['src_ip'] == filter[index+2])]
-        elif filter[index] == 'ip.dst' and filter[index+1] == '=' and type(filter[index+2]) == str:
-            filter[index:index+3] = [(packet['dst_ip'] == filter[index+2])]
-        elif filter[index] == 'port.src' and filter[index+1] == '=' and type(filter[index+2]) == str:
-            filter[index:index+3] = [str(packet['src_port']) == filter[index+2]]
-        elif filter[index] == 'port.dst' and filter[index+1] == '=' and type(filter[index+2]) == str:
-            filter[index:index+3] = [str(packet['dst_port']) == filter[index+2]]
+        if filter[index] == 'ip.src' :
+            if filter[index+1] == '==':
+                filter[index:index+3] = [get_ip_src(packet) == filter[index+2]]
+            elif filter[index+1] == '!=':
+                filter[index:index+3] = [get_ip_src(packet) != filter[index+2]]
+        elif filter[index] == 'ip.dst':
+            if filter[index+1] == '==':
+                filter[index:index+3] = [get_ip_dst(packet) == filter[index+2]]
+            elif filter[index+1] == '!=':
+                filter[index:index+3] = [get_ip_dst(packet) != filter[index+2]]
+        elif filter[index] == 'port.src':
+            if filter[index+1] == '==':
+                filter[index:index+3] = [str(get_port_src(packet)) == filter[index+2]]
+            elif filter[index+1] == '!=':
+                filter[index:index+3] = [str(get_port_src(packet)) != filter[index+2]]
+        elif filter[index] == 'port.dst':
+            if filter[index+1] == '==':
+                filter[index:index+3] = [str(get_port_dst(packet)) == filter[index+2]]
+            elif filter[index+1] == '!=':
+                filter[index:index+3] = [str(get_port_dst(packet)) != filter[index+2]]
+        elif filter[index] == 'id':
+            if filter[index+1] == '==':
+                filter[index:index+3] = [packet['id'] == int(filter[index+2])]
+            elif filter[index+1] == '>':
+                filter[index:index+3] = [packet['id'] > int(filter[index+2])]
+            elif filter[index+1] == '<':
+                filter[index:index+3] = [packet['id'] < int(filter[index+2])]
+            elif filter[index+1] == '!=':
+                filter[index:index+3] = [packet['id'] != int(filter[index+2])]
         elif filter[index] in self.protocols:
             filter[index] = (packet['protocol'] == filter[index])
         elif filter[index] == '(':
@@ -153,6 +204,9 @@ class Filter:
                 self.check_filter(packet, filter, i+1)
                 filter[i-1:i+2] = [filter[i-1] and filter[i+1]]
                 i -= 1
+            elif filter[i] == 'not':
+                self.check_filter(packet, filter, i+1)
+                filter[i:i+2] = [not filter[i+1]]
             else:
                 self.check_filter(packet, filter, i)
             i += 1
