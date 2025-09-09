@@ -17,9 +17,9 @@ class sniffer:
         hex_data = self.bytes_to_hex(bytes(packet))
         protocol = get_first_layer(hex_data)
         data = decode(hex_data, protocol)
-        protocol = get_protocol(data)
+        protocol, layers = get_protocol(data, protocol)
 
-        self.packets.append({'id': len(self.packets), 'protocol': protocol, 'Data': data, 'Hex': hex_data})
+        self.packets.append({'id': len(self.packets), 'protocol': protocol, 'protocol layers': layers, 'Data': data, 'Hex': hex_data})
 
     def get_data(self, packet):
         try:

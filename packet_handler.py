@@ -10,6 +10,8 @@ def identify_protocol(data, protocol):
         elif protocol == 'UDP':
             if data['Source Port'] == 53 or data['Destination Port'] == 53:
                 return 'DNS'
+            elif data['Source Port'] == 5353 or data['Destination Port'] == 5353:
+                return 'mDNS'
             else:
                 return 'UDP'
 
@@ -19,27 +21,42 @@ def identify_protocol(data, protocol):
         else:
             return 'Unknown'
 
-def get_protocol(packet):
-    Data = packet['Data']
-    last_protocol = None
-    protocol = None
+def get_protocol(packet, first_protocol = None):
+    Data = packet
+    layers = []
+
+    if first_protocol:
+        layers.append(first_protocol)
 
     while isinstance(Data, dict) and 'Data' in Data['Data']:
         if 'Protocol' in Data:
-            last_protocol = Data['Protocol']
+            layers.append(Data['Protocol'])
         elif 'Next Header' in Data:
-            last_protocol = Data['Next Header']
+            layers.append(Data['Next Header'])
 
         Data = Data['Data']
 
     if 'Protocol' in Data:
         protocol = Data['Protocol']
+        layers.append(protocol)
     elif 'Next Header' in Data:
         protocol = Data['Next Header']
+        layers.append(protocol)
     else:
-        protocol = identify_protocol(Data, last_protocol)
+        if layers:
+            protocol = identify_protocol(Data, layers[-1])
+        else:
+            protocol = identify_protocol(Data, None)
 
-    return protocol
+    if layers and layers[-1] != protocol:
+        layers.append(protocol)
+    elif not layers:
+        layers.append(protocol)
+
+    if first_protocol:
+        return protocol, layers
+    else:
+        return protocol
 
 def get_ip_src(packet):
     data = packet['Data']
@@ -85,9 +102,6 @@ def get_port_dst(packet):
 
     return 'None'
 
-def get_raw_data(packet):
-    pass
-
 def get_packet_data(data):
     ip_src = None
     ip_dst = None
@@ -108,7 +122,8 @@ def get_packet_data(data):
             port_src = data['Source Port']
             port_dst = data['Destination Port']
 
-        data = data['Data']
+        if 'Data' in data:
+            data = data['Data']
 
     if ip_src is None:
         ip_src = 'None'
@@ -120,3 +135,26 @@ def get_packet_data(data):
         port_dst = 'None'
 
     return ip_src, ip_dst, port_src, port_dst, protocol
+
+def hex_dump(data):
+    raw_data = ''
+    for y in range(0, len(data), 16):
+        hex_data = ''
+        ascii_data = ''
+        for i in range(y, y+16, 2):
+            hex_data += f'{data[i:i+2]} '
+
+            if data[i:i+2] == '':
+                continue
+            value = int(data[i:i+2], 16)
+            if  32 <= value <= 126:
+                ascii_data += f'{chr(value)} '
+            else:
+                ascii_data += '• '
+        hex_data += '\t'
+        ascii_data += '\n'
+        hex_data = hex_data.ljust(25)
+
+        raw_data += hex_data + ascii_data
+
+    return raw_data

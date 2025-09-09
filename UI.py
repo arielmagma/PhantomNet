@@ -2,7 +2,8 @@ from threading import Thread
 from tkinter import *
 from tkinter import ttk
 from file_handler import save_session, load_session
-from packet_handler import get_packet_data
+from packet_handler import get_packet_data, hex_dump
+from ToggleFrame import ToggledFrame
 
 class UI:
     def __init__(self, Sniffer, Filter):
@@ -177,7 +178,7 @@ class UI:
 
         top = Toplevel(self.root)
         top.title(f"Packet #{index}")
-        top.geometry("750x500")
+        top.geometry("800x550")
         top.config(bg='#232323')
 
         label = Label(top, text=f"Packet #{index} Data:", font=('Segoe UI', 12, 'bold'), bg='#232323', fg='#fafafa')
@@ -237,28 +238,11 @@ class UI:
         details_frame = Frame(main_frame, bg='#232323')
         details_frame.pack(side=LEFT, fill=Y, padx=(0,18), pady=4)
 
-        details_fields = ['ID', 'Protocol', 'Source IP', 'Source Port', 'Destination IP', 'Destination Port']
-        details_labels = []
-
-        for i, name in enumerate(details_fields):
-            title_label = Label(details_frame, text=f"{name}:", font=('Segoe UI', 10, 'bold'), bg='#232323', fg='#fafafa', width=18, anchor='e', justify='right')
-            title_label.grid(row=i, column=0, sticky='e', pady=3)
-            value_label = Label(details_frame, text="", font=('Consolas', 10), bg='#232323', fg='#fafafa', width=22, anchor='w', justify='left')
-            value_label.grid(row=i, column=1, sticky='w', pady=3)
-            details_labels.append(value_label)
-
-        def render_details(idx):
-            pkt = self.Sniffer.packets[idx]
-            fields = [
-                pkt.get('id', ''),
-                pkt.get('protocol', ''),
-                pkt.get('src_ip', ''),
-                pkt.get('src_port', ''),
-                pkt.get('dst_ip', ''),
-                pkt.get('dst_port', ''),
-            ]
-            for i, value_label in enumerate(details_labels):
-                value_label.config(text=str(fields[i]))
+        layer_data = packet['Data']
+        for layer in packet['protocol layers']:
+            ToggledFrame(details_frame, layer, layer_data).pack()
+            if 'Data' in layer_data:
+                layer_data = layer_data['Data']
 
         # --- Right: Hex Dump ---
         hex_frame = Frame(main_frame, bg='#232323')
@@ -274,29 +258,18 @@ class UI:
 
         text = Text(
             text_frame,
-            wrap="none",
             yscrollcommand=scrollbar.set,
             font=('Consolas', 13),
             bg='#000000',
             fg='#fafafa',
             height=16,
-            width=44
+            width=44,
+            wrap=WORD
         )
         text.pack(side=LEFT, fill=BOTH, expand=True)
         scrollbar.config(command=text.yview)
 
-        render_details(index)
-        raw_data = packet['Hex']
-
-#        if isinstance(raw_data, bytes):
-#            formatted_data = raw_data
- #       else:
-#            try:
-#                raw_bytes = bytes.fromhex(raw_data)
-#                formatted_data = format_hex_ascii(raw_bytes)
-#            except:
-#                formatted_data = str(raw_data)
-
+        raw_data = hex_dump(packet['Hex'])
         text.insert(END, raw_data)
         text.config(state="disabled")
 

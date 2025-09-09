@@ -2,7 +2,7 @@ from packet_handler import get_protocol, get_ip_dst, get_ip_src, get_port_dst, g
 
 class Filter:
     def __init__(self):
-        self.protocols = ['HTTP', 'HTTPS', 'TCP', 'DNS', 'UDP', 'ICMP', 'ARP', 'Raw', 'IP', 'IPv6', 'SMTP', 'SSH', 'FTP', 'DHCP', 'IGMPv3', 'Unknown']
+        self.protocols = ['HTTP', 'HTTPS', 'TCP', 'DNS', 'UDP', 'ICMP', 'ARP', 'Raw', 'IP', 'IPv6', 'SMTP', 'SSH', 'FTP', 'DHCP', 'IGMPv3', 'mDNS', 'Unknown']
         self.filter = []
 
     def update_filter(self, filter):
