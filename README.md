@@ -12,11 +12,10 @@
 
 - Live packet sniffing with Scapy
 - Packet filtering
-- Fully written in Python
 - Save sniffing sessions
-
+- In depth data display 
 ## Tech Stack
 
 - **Python** – core logic and glue between components
-- **Scapy** – backend packet sniffing and network interaction
+- **Scapy** – backend packet sniffing
 - **Tkinter** – frontend user interface
