@@ -71,7 +71,6 @@ class Filter:
                 else:
                     del self.filter[index]
             elif self.filter[index] == 'not':
-                print(index, len(self.filter), self.filter)
                 if index < len(self.filter) - 1:
                     index += 1
                 else:

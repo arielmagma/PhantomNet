@@ -59,7 +59,6 @@ def get_protocol(packet, first_protocol = None):
         return protocol
 
 def get_ip_src(packet):
-    print(f'Packet Data: {packet}')
     data = packet['Data']
 
     while isinstance(data, dict):

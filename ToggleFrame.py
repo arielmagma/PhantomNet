@@ -47,6 +47,11 @@ class ToggledFrame(tk.Frame):
                         font=('Segoe UI', 10)
                     ).pack(fill='x', padx=10, pady=3)
         elif isinstance(self.data, str):
+            lines = []
+            for i in range(0, len(self.data), 20):
+                lines.append(self.data[i:i+20])
+
+            self.data = "\n".join(lines)
             tk.Label(
                 self.sub_frame,
                 text=self.data,
