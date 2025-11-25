@@ -59,6 +59,7 @@ def get_protocol(packet, first_protocol = None):
         return protocol
 
 def get_ip_src(packet):
+    print(f'Packet Data: {packet}')
     data = packet['Data']
 
     while isinstance(data, dict):
@@ -158,3 +159,9 @@ def hex_dump(data):
         raw_data += hex_data + ascii_data
 
     return raw_data
+
+def find_tcp_conv(packets, packet_index, event=None):
+    packet = packets[packet_index]
+
+    if 'tcp' in packet['protocol layers']:
+        pass

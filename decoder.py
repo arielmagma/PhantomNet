@@ -11,6 +11,7 @@ def hex_to_ascii(packet_data):
     return data
 
 def Ethernet_decode(packet_data):
+    print(packet_data, '\n')
     data = {}
 
     data['Destination MAC'] = f'{packet_data[0:2]}:{packet_data[2:4]}:{packet_data[4:6]}:{packet_data[6:8]}:{packet_data[8:10]}:{packet_data[10:12]}'
